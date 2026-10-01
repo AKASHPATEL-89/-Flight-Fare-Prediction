@@ -14,7 +14,7 @@
 
 ### 🌐 Try the Flight Fare Prediction App
 
-👉 **[Open Live Demo](https://flight-fareprediction.streamlit.app/)**
+👉 **[Open Live Demo](https://flightfareprediction89.streamlit.app/)**
 
 The application provides an interactive interface where users can enter flight-related information and receive an estimated flight fare.
 
