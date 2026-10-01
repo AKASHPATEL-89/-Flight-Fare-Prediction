@@ -1,13 +1,12 @@
-
 import streamlit as st
 import pandas as pd
 import joblib
 import os
-import base64
+import random
 
 
 # ============================================================
-# PAGE CONFIGURATION
+# PAGE CONFIGURATION (must be the first Streamlit call)
 # ============================================================
 
 st.set_page_config(
@@ -18,50 +17,100 @@ st.set_page_config(
 
 
 # ============================================================
-# BACKGROUND IMAGE
-# ============================================================
-import streamlit as st
-import os
-import base64
-
-
-# ============================================================
-# BACKGROUND IMAGE
+# UNSPLASH BACKGROUND IMAGES
 # ============================================================
 
-def set_background(image_file):
+UNSPLASH_URLS = [
+    "https://images.unsplash.com/photo-1542281286-9e0a16bb7366?w=1920&q=80",
+    "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=1920&q=80",
+    "https://images.unsplash.com/photo-1569154941061-e231b4725ef1?w=1920&q=80",
+    "https://images.unsplash.com/photo-1474302770737-173ee21bab63?w=1920&q=80",
+    "https://images.unsplash.com/photo-1517479149777-5f3b1511d5ad?w=1920&q=80",
+    "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=1920&q=80",
+    "https://images.unsplash.com/photo-1503220317375-aaad61436b1b?w=1920&q=80",
+    "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1920&q=80",
+]
 
-    if not os.path.exists(image_file):
-        st.error(f"❌ Image not found: {image_file}")
-        return
 
-    with open(image_file, "rb") as file:
-        encoded_image = base64.b64encode(file.read()).decode()
+def set_background(image_url: str):
+    """Inject a full-page background image via CSS."""
 
     st.markdown(
         f"""
         <style>
 
-        /* Main Streamlit background */
+        /* ---- Main app background ---- */
+        .stApp,
         [data-testid="stAppViewContainer"] {{
-            background-image: url(
-                "data:image/jpeg;base64,{encoded_image}"
-            );
-
+            background-image: url("{image_url}");
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
             background-attachment: fixed;
         }}
 
-        /* Remove default header background */
+        /* ---- Transparent header ---- */
         [data-testid="stHeader"] {{
-            background: rgba(0,0,0,0);
+            background: rgba(0, 0, 0, 0);
         }}
 
-        /* Main content transparent */
-        [data-testid="stMain"] {{
-            background: transparent;
+        /* ---- Dark overlay for readability ---- */
+        [data-testid="stAppViewContainer"]::before {{
+            content: "";
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(
+                rgba(5, 15, 30, 0.65),
+                rgba(5, 15, 30, 0.82)
+            );
+            z-index: 0;
+            pointer-events: none;
+        }}
+
+        /* ---- Keep content above the overlay ---- */
+        [data-testid="stAppViewContainer"] > .main,
+        section.main,
+        .block-container {{
+            position: relative;
+            z-index: 1;
+        }}
+
+        /* ---- Sidebar ---- */
+        section[data-testid="stSidebar"] {{
+            background: rgba(3, 12, 28, 0.92);
+        }}
+
+        section[data-testid="stSidebar"] * {{
+            color: white;
+        }}
+
+        /* ---- Text colors ---- */
+        label, .stMarkdown, h1, h2, h3, h4, h5, h6, p {{
+            color: white !important;
+        }}
+
+        /* ---- Metric card ---- */
+        div[data-testid="stMetric"] {{
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.20);
+            padding: 22px;
+            border-radius: 18px;
+            backdrop-filter: blur(10px);
+        }}
+
+        div[data-testid="stMetricLabel"] {{
+            color: #dbeafe !important;
+        }}
+
+        div[data-testid="stMetricValue"] {{
+            color: white !important;
+            font-weight: 800;
+        }}
+
+        /* ---- Button ---- */
+        .stButton > button {{
+            border-radius: 12px;
+            font-weight: 700;
         }}
 
         </style>
@@ -70,11 +119,46 @@ def set_background(image_file):
     )
 
 
+# Pick a random background ONCE per session
+if "bg_url" not in st.session_state:
+    st.session_state.bg_url = random.choice(UNSPLASH_URLS)
+
+
 # ============================================================
-# SET BACKGROUND
+# SIDEBAR — top (background shuffle button)
 # ============================================================
 
-set_background("background1.jpg")
+with st.sidebar:
+
+    st.markdown(
+        """
+        <div style="
+            text-align:center;
+            padding:15px;
+            margin-bottom:20px;
+            border-radius:15px;
+            background:rgba(255,255,255,0.08);
+        ">
+            <div style="font-size:42px;">✈️</div>
+            <div style="font-size:22px; font-weight:800;">Flight Fare Prediction
+</div>
+            <div style="font-size:13px; color:#bfdbfe;">
+                Machine Learning Prediction
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    if st.button("🎲 Change Background", use_container_width=True):
+        st.session_state.bg_url = random.choice(UNSPLASH_URLS)
+        st.rerun()
+
+    st.divider()
+
+
+# Apply background (must come AFTER session_state is set)
+set_background(st.session_state.bg_url)
 
 
 # ============================================================
@@ -92,6 +176,7 @@ st.markdown(
     - 📦 Bagging Regressor
     """
 )
+
 
 # ============================================================
 # FILE PATHS
@@ -120,22 +205,13 @@ required_files = [
     "bagging_regressor_model.joblib"
 ]
 
-missing_files = [
-    file for file in required_files
-    if not os.path.exists(file)
-]
+missing_files = [f for f in required_files if not os.path.exists(f)]
 
 if missing_files:
-
     st.error("❌ Required files are missing.")
-
-    for file in missing_files:
-        st.write(f"- `{file}`")
-
-    st.info(
-        "Keep all required files in the same folder as app.py."
-    )
-
+    for f in missing_files:
+        st.write(f"- `{f}`")
+    st.info("Keep all required files in the same folder as app.py.")
     st.stop()
 
 
@@ -145,12 +221,9 @@ if missing_files:
 
 @st.cache_data
 def load_dataset():
-
     data = pd.read_csv(DATA_FILE)
-
     if "Unnamed: 0" in data.columns:
         data = data.drop("Unnamed: 0", axis=1)
-
     return data
 
 
@@ -158,7 +231,7 @@ df = load_dataset()
 
 
 # ============================================================
-# LOAD ENCODERS
+# LOAD ENCODERS / SCALER / MODELS
 # ============================================================
 
 @st.cache_resource
@@ -166,36 +239,18 @@ def load_encoders():
     return joblib.load(ENCODER_FILE)
 
 
-encoders = load_encoders()
-
-
-# ============================================================
-# LOAD SCALER
-# ============================================================
-
 @st.cache_resource
 def load_scaler():
     return joblib.load(SCALER_FILE)
 
 
-scaler = load_scaler()
-
-
-# ============================================================
-# LOAD MODELS
-# ============================================================
-
 @st.cache_resource
 def load_models():
-
-    models = {}
-
-    for name, file in MODEL_FILES.items():
-        models[name] = joblib.load(file)
-
-    return models
+    return {name: joblib.load(f) for name, f in MODEL_FILES.items()}
 
 
+encoders = load_encoders()
+scaler = load_scaler()
 models = load_models()
 
 
@@ -218,26 +273,27 @@ feature_order = [
 
 
 # ============================================================
-# SIDEBAR - MODEL INFORMATION
+# SIDEBAR — MODEL SELECTION
 # ============================================================
 
-st.sidebar.header("⚙️ Model Information")
+with st.sidebar:
 
+    st.header("⚙️ Model Information")
+    st.write("🌳 Random Forest Regressor")
+    st.write("📦 Bagging Regressor")
 
-# ============================================================
-# SIDEBAR - MODEL SELECTION
-# ============================================================
+    st.divider()
 
-st.sidebar.header("🎯 Model Selection")
+    st.header("🎯 Model Selection")
 
-model_choice = st.sidebar.selectbox(
-    "Select Model",
-    [
-        "Random Forest Regressor",
-        "Bagging Regressor",
-        "Compare All Models"
-    ]
-)
+    model_choice = st.selectbox(
+        "Select Model",
+        [
+            "Random Forest Regressor",
+            "Bagging Regressor",
+            "Compare All Models"
+        ]
+    )
 
 
 # ============================================================
@@ -248,100 +304,40 @@ st.subheader("🛫 Enter Flight Details")
 
 col1, col2, col3 = st.columns(3)
 
-
-# Airline
 with col1:
+    airline = st.selectbox("Airline", list(encoders["airline"].classes_))
 
-    airline = st.selectbox(
-        "Airline",
-        list(encoders["airline"].classes_)
-    )
-
-
-# Flight
 with col2:
+    flight = st.selectbox("Flight", list(encoders["flight"].classes_))
 
-    flight = st.selectbox(
-        "Flight",
-        list(encoders["flight"].classes_)
-    )
-
-
-# Source City
 with col3:
+    source_city = st.selectbox("Source City", list(encoders["source_city"].classes_))
 
-    source_city = st.selectbox(
-        "Source City",
-        list(encoders["source_city"].classes_)
-    )
-
-
-# Departure Time
 with col1:
+    departure_time = st.selectbox("Departure Time", list(encoders["departure_time"].classes_))
 
-    departure_time = st.selectbox(
-        "Departure Time",
-        list(encoders["departure_time"].classes_)
-    )
-
-
-# Stops
 with col2:
+    stops = st.selectbox("Stops", list(encoders["stops"].classes_))
 
-    stops = st.selectbox(
-        "Stops",
-        list(encoders["stops"].classes_)
-    )
-
-
-# Arrival Time
 with col3:
+    arrival_time = st.selectbox("Arrival Time", list(encoders["arrival_time"].classes_))
 
-    arrival_time = st.selectbox(
-        "Arrival Time",
-        list(encoders["arrival_time"].classes_)
-    )
-
-
-# Destination City
 with col1:
+    destination_city = st.selectbox("Destination City", list(encoders["destination_city"].classes_))
 
-    destination_city = st.selectbox(
-        "Destination City",
-        list(encoders["destination_city"].classes_)
-    )
-
-
-# Class
 with col2:
+    flight_class = st.selectbox("Class", list(encoders["class"].classes_))
 
-    flight_class = st.selectbox(
-        "Class",
-        list(encoders["class"].classes_)
-    )
-
-
-# Duration
 with col3:
-
     duration = st.number_input(
         "Duration (hours)",
-        min_value=0.0,
-        max_value=100.0,
-        value=2.5,
-        step=0.1
+        min_value=0.0, max_value=100.0, value=2.5, step=0.1
     )
 
-
-# Days Left
 with col1:
-
     days_left = st.number_input(
         "Days Left",
-        min_value=1,
-        max_value=50,
-        value=10,
-        step=1
+        min_value=1, max_value=50, value=10, step=1
     )
 
 
@@ -363,231 +359,48 @@ predict = st.button(
 # ============================================================
 
 if predict:
-
     try:
-
-        # ----------------------------------------------------
-        # ENCODE INPUT VALUES
-        # ----------------------------------------------------
-
         encoded_values = {
-
-            "airline":
-                encoders["airline"].transform(
-                    [airline]
-                )[0],
-
-            "flight":
-                encoders["flight"].transform(
-                    [flight]
-                )[0],
-
-            "source_city":
-                encoders["source_city"].transform(
-                    [source_city]
-                )[0],
-
-            "departure_time":
-                encoders["departure_time"].transform(
-                    [departure_time]
-                )[0],
-
-            "stops":
-                encoders["stops"].transform(
-                    [stops]
-                )[0],
-
-            "arrival_time":
-                encoders["arrival_time"].transform(
-                    [arrival_time]
-                )[0],
-
-            "destination_city":
-                encoders["destination_city"].transform(
-                    [destination_city]
-                )[0],
-
-            "class":
-                encoders["class"].transform(
-                    [flight_class]
-                )[0],
-
+            "airline": encoders["airline"].transform([airline])[0],
+            "flight": encoders["flight"].transform([flight])[0],
+            "source_city": encoders["source_city"].transform([source_city])[0],
+            "departure_time": encoders["departure_time"].transform([departure_time])[0],
+            "stops": encoders["stops"].transform([stops])[0],
+            "arrival_time": encoders["arrival_time"].transform([arrival_time])[0],
+            "destination_city": encoders["destination_city"].transform([destination_city])[0],
+            "class": encoders["class"].transform([flight_class])[0],
             "duration": duration,
-
             "days_left": days_left
         }
 
+        input_data = pd.DataFrame([encoded_values])[feature_order]
+        input_scaled = scaler.transform(input_data)
 
-        # ----------------------------------------------------
-        # CREATE INPUT DATAFRAME
-        # ----------------------------------------------------
-
-        input_data = pd.DataFrame(
-            [encoded_values]
-        )
-
-        input_data = input_data[
-            feature_order
-        ]
-
-
-        # ----------------------------------------------------
-        # FEATURE CHECK
-        # ----------------------------------------------------
-
-        if input_data.shape[1] != 10:
-
-            st.error(
-                f"❌ Expected 10 features, "
-                f"but got {input_data.shape[1]}."
-            )
-
-            st.stop()
-
-
-        # ----------------------------------------------------
-        # SCALE INPUT
-        # ----------------------------------------------------
-
-        input_scaled = scaler.transform(
-            input_data
-        )
-
-
-        # ----------------------------------------------------
-        # SCALE CHECK
-        # ----------------------------------------------------
-
-        if input_scaled.shape[1] != 10:
-
-            st.error(
-                f"❌ Scaler generated "
-                f"{input_scaled.shape[1]} features."
-            )
-
-            st.stop()
-
-
-        # ====================================================
-        # SINGLE MODEL PREDICTION
-        # ====================================================
-
+        # ---------- Single model ----------
         if model_choice != "Compare All Models":
-
             model = models[model_choice]
+            price = float(model.predict(input_scaled)[0])
 
-            expected_features = getattr(
-                model,
-                "n_features_in_",
-                10
-            )
+            st.success("✅ Prediction Successful!")
+            st.metric("💰 Predicted Flight Fare", f"₹ {price:,.2f}")
+            st.info(f"🤖 Model Used: **{model_choice}**")
 
-
-            if expected_features != 10:
-
-                st.error(
-                    f"❌ {model_choice} expects "
-                    f"{expected_features} features."
-                )
-
-                st.stop()
-
-
-            prediction = model.predict(
-                input_scaled
-            )
-
-            price = float(
-                prediction[0]
-            )
-
-
-            # ------------------------------------------------
-            # SHOW RESULT
-            # ------------------------------------------------
-
-            st.success(
-                "✅ Prediction Successful!"
-            )
-
-            st.metric(
-                "💰 Predicted Flight Fare",
-                f"₹ {price:,.2f}"
-            )
-
-            st.info(
-                f"🤖 Model Used: **{model_choice}**"
-            )
-
-
-        # ====================================================
-        # COMPARE BOTH MODELS
-        # ====================================================
-
+        # ---------- Compare all models ----------
         else:
-
-            st.subheader(
-                "📊 Prediction Comparison"
-            )
-
+            st.subheader("📊 Prediction Comparison")
             results = []
-
-
             for name, model in models.items():
-
-                expected_features = getattr(
-                    model,
-                    "n_features_in_",
-                    10
-                )
-
-
-                if expected_features != 10:
-
-                    st.error(
-                        f"❌ {name} expects "
-                        f"{expected_features} features."
-                    )
-
-                    st.stop()
-
-
-                prediction = model.predict(
-                    input_scaled
-                )
-
-                price = float(
-                    prediction[0]
-                )
-
-
-                results.append(
-                    {
-                        "Model": name,
-                        "Predicted Fare":
-                            f"₹ {price:,.2f}"
-                    }
-                )
-
-
-            result_df = pd.DataFrame(
-                results
-            )
-
+                price = float(model.predict(input_scaled)[0])
+                results.append({
+                    "Model": name,
+                    "Predicted Fare": f"₹ {price:,.2f}"
+                })
 
             st.dataframe(
-                result_df,
+                pd.DataFrame(results),
                 use_container_width=True,
                 hide_index=True
             )
 
-
-    # ========================================================
-    # ERROR HANDLING
-    # ========================================================
-
     except Exception as e:
-
-        st.error(
-            f"❌ Prediction Error: {str(e)}"
-        )
+        st.error(f"❌ Prediction Error: {str(e)}")
